@@ -1,0 +1,38 @@
+		POP ASSIGNMENT
+		---------------
+visualization using d3
+----------------------- 
+________________________________________________________________
+
+1) Install the required node_modules by : [ express ]
+
+	$ npm install
+
+2) Run the local server ( serves static files )
+
+	$ node server.js
+
+3) visit http://localhost:3000 to view the assignment
+
+_________________________________________________________________
+
+Some info :
+------------
+
+* Click on the states to get the plots
+* Click on the selected state only or any area out of the Indian map to zoom out
+* Can also click on the neighbouring states
+
+* The plots have explanatory markers, the circular Plot shows the number of companies in 
+	a sector, the bar graph is paidup_capital vs sectors 
+	[ also has markers, so hovering over it highlights the entry ]
+
+* used process.py to process the data obtained from data.gov.in [ company master data -- ministy of corparate affairs ]
+
+___________________________________________________________________
+
+AUTHOR 
+-------
+Arjun Krishna
+CS14B058
+Dept. CSE, IITM

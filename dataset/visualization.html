@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.background {
+  fill: none;
+  pointer-events: all;
+  font: 10px sans-serif;
+}
+
+#states {
+  fill: #aaa;
+}
+
+#states .active {
+  fill: orange;
+}
+
+#state-borders {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+#state_data {
+  display: none;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.bar {
+  fill: orange;
+}
+
+.bar:hover {
+  fill: orangered ;
+}
+
+.solidArc:hover {
+  fill: orangered ;
+}
+
+.solidArc {
+    -moz-transition: all 0.3s;
+    -o-transition: all 0.3s;
+    -webkit-transition: all 0.3s;
+    transition: all 0.3s;
+}
+
+.x.axis path {
+  display: none;
+}
+
+.aster-score { 
+  line-height: 1;
+  font-weight: bold;
+  font-size: 150%;
+}
+
+.d3-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 2px;
+}
+
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+/* Style northward tooltips differently */
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+
+</style>
+<body>
+  <div id="map_container" align="center">
+    <svg id="map"></svg>
+  </div>
+  <div id="state_data" align="center">
+    <h2 id="state_name" style="display:inline"></h2>
+    <button onclick="back()" style="display: inline;float:right">BACK</button>
+    <br><br><br>
+    <svg id="state_spec"></svg>
+    <div align="center" id="options">
+      <table>
+        <tr>
+        <td><button onclick="show(0)"> Number of Companies in each Sector </button></td>
+        <td><button onclick="show(1)"> Bar Graph of Paidup capital vs Sector</button>
+        </tr>
+      </table>
+    </div>
+    <br><br>
+    <p id="general_mssg"></p>
+    
+  </div>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<!-- <script src="https://d3js.org/d3.v4.min.js"></script> -->
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+<script src="//d3js.org/topojson.v1.min.js"></script>
+<script>
+
+state_map = { "Chandigarh":"Chandigarh",
+        "Delhi":"Delhi",
+        "Himachal Pradesh":"Himachal",
+        "Haryana": "Haryana",
+        "Orissa" : "Odisha",
+        "Karnataka": "Karnataka",
+        "Maharashtra":"Maharashtra",
+        "Assam":"Assam",
+        "Manipur":"Manipur",
+        "Nagaland":"Nagaland",
+        "Meghalaya":"Meghalaya",
+        "Punjab":"Punjab",
+        "Rajasthan":"Rajasthan",
+        "Uttar Pradesh":"Uttar_Pradesh",
+        "Uttaranchal":"Uttarakhand",
+        "Jharkhand":"Jharkhand",
+        "Bihar":"Bihar",
+        "Chhattisgarh":"Chhattisgarh",
+        "Madhya Pradesh":"Madhya_Pradesh",
+        "Puducherry":"Puducherry",
+        "Tamil Nadu":"Tamil_Nadu",
+        "Goa":"Goa",
+        "Arunachal Pradesh":"Arunachal_Pradesh",
+        "Mizoram":"Mizoram",
+        "Tripura":"Tripura",
+        "West Bengal":"West_Bengal",
+        "Kerala":"Kerala",
+        "Gujarat":"Gujarat",
+        "Andhra Pradesh":"Andhra_Pradesh",
+        "Andaman and Nicobar":"Andaman_Nicobar",
+        "Jammu and Kashmir":"Jammu"
+      };
+
+function back() {
+  document.getElementById("map_container").style.display = "block";
+  document.getElementById("state_spec").innerHTML = "";
+  document.getElementById("general_mssg").innerHTML = "";
+}
+
+var global_state = "";
+
+function show(id) {
+  document.getElementById("state_spec").innerHTML = "";
+  document.getElementById("general_mssg").innerHTML = "";
+  if(id == 0) {
+    asterPlotActivity("data/"+global_state+"_activity.tsv");
+  } else if(id ==1) {
+    barPlot("data/"+global_state+"_activity.tsv");
+  }
+}
+
+var width = 880,
+    height = 700,
+    centered;
+
+var projection = d3.geo.mercator().scale(1100).translate([-1000,800]);
+
+var path = d3.geo.path()
+    .projection(projection);
+
+var svg = d3.select("#map")
+    .attr("width", width)
+    .attr("height", height);
+
+svg.append("rect")
+    .attr("class", "background")
+    .attr("width", width)
+    .attr("height", height)
+    .on("click", clicked);
+
+var g = svg.append("g");
+
+d3.json("india.json", function(error, india) {
+  if (error) throw error;
+
+  g.append("g")
+      .attr("id", "states")
+    .selectAll("path")
+      .data(topojson.feature(india, india.objects.india).features)
+    .enter().append("path")
+      .attr("d", path)
+      .on("click", clicked);
+
+  g.append("path")
+      .datum(topojson.mesh(india, india.objects.india, function(a, b) { return a !== b; }))
+      .attr("id", "state-borders")
+      .attr("d", path);
+});
+
+function clicked(d) {
+  var x, y, k;
+  if (d) {
+    document.getElementById("state_spec").innerHTML = "";
+    document.getElementById("general_mssg").innerHTML = "";
+    fillStateData(d.properties.NAME_1);
+  }
+  if (d && centered !== d) {
+    var centroid = path.centroid(d);
+    x = centroid[0];
+    y = centroid[1];
+    k = 4;
+    centered = d;
+    setTimeout(function() {
+      document.getElementById("state_data").style.display = "block";
+      document.getElementById("map_container").style.display = "none";
+    },755);
+  } else {
+    x = width / 2;
+    y = height / 2;
+    k = 1;
+    centered = null;
+  }
+
+  g.selectAll("path")
+      .classed("active", centered && function(d) { return d === centered; });
+
+  g.transition()
+      .duration(750)
+      .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")scale(" + k + ")translate(" + -x + "," + -y + ")")
+      .style("stroke-width", 1.5 / k + "px");
+
+}
+
+function fillStateData(name) {
+  document.getElementById("state_name").innerHTML = name;
+  var state = state_map[name];
+  global_state = state;
+  if(state == undefined){
+    document.getElementById("general_mssg").innerHTML = "NO DATA AVAILABLE";
+  } else {
+    asterPlotActivity("data/"+state+"_activity.tsv");
+    // barPlot("data/"+state+"_activity.tsv");
+  }
+}
+
+function asterPlotActivity(fileName) {
+  function type(d) {
+    d.number_of_companies = +d.number_of_companies;
+    return d;
+  }
+  d3.tsv(fileName,type,function(error, data) {
+    if (error) throw error
+    var i = 1;
+    var total = 0;
+    data.forEach(function(d) {
+      d.width = 1;
+      d.label = d.activity;
+      d.order = i++;
+      d.weight = d.number_of_companies;
+      d.color = '#'+Math.random().toString(16).substr(-6);
+      total += d.weight;
+    });
+    data.forEach(function(d) {
+      d.score = (d.weight*100)/ total;
+    })
+    asterPlot(data,"Activity");
+  });
+}
+
+function asterPlot(data,plotName) {
+  // data.weight == numer_of_companies
+  console.log(data);
+  var width = 500,
+    height = 500,
+    radius = Math.min(width, height) / 2,
+    innerRadius = 0.3 * radius;
+
+  var pie = d3.layout.pie()
+      .sort(null)
+      .value(function(d) { return d.width; });
+
+  var tip = d3.tip()
+    .attr('class', 'd3-tip')
+    .offset([0, 0])
+    .html(function(d) {
+      return d.data.label + ": <span style='color:orangered'>" + d.data.weight + "</span>";
+    });
+
+  var arc = d3.svg.arc()
+    .innerRadius(innerRadius)
+    .outerRadius(function (d) { 
+      return (radius - innerRadius) * ((d.data.score+50) / 100.0) + innerRadius ; 
+    });
+
+  var outlineArc = d3.svg.arc()
+          .innerRadius(innerRadius)
+          .outerRadius(radius);
+
+  var svg = d3.select("#state_spec")
+      .attr("width", width)
+      .attr("height", height)
+      .append("g")
+      .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+  svg.call(tip);
+    
+  var path = svg.selectAll(".solidArc")
+      .data(pie(data))
+    .enter().append("path")
+      .attr("fill", function(d) { return d.data.color; })
+      .attr("class", "solidArc")
+      .attr("stroke", "gray")
+      .attr("d", arc)
+      .on('mouseover', tip.show)
+      .on('mouseout', tip.hide);
+
+  var outerPath = svg.selectAll(".outlineArc")
+      .data(pie(data))
+    .enter().append("path")
+      .attr("fill", "none")
+      .attr("stroke", "gray")
+      .attr("class", "outlineArc")
+      .attr("d", outlineArc);  
+
+
+  svg.append("svg:text")
+    .attr("class", "aster-score")
+    .attr("dy", ".35em")
+    .attr("text-anchor", "middle") // text-align: right
+    .text(plotName);
+}
+
+function barPlot(fileName) {
+
+  var margin = {top: 40, right: 20, bottom: 30, left: 40},
+      width = 960 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
+
+  var formatPercent = d3.format(".0%");
+
+  var x = d3.scale.ordinal()
+      .rangeRoundBands([0, width], .1);
+
+  var y = d3.scale.linear()
+      .range([height, 0]);
+
+  var xAxis = d3.svg.axis()
+      .scale(x)
+      .orient("bottom")
+      .tickValues([]);
+
+  var yAxis = d3.svg.axis()
+      .scale(y)
+      .orient("left")
+      .tickValues([]);
+
+  var tip = d3.tip()
+    .attr('class', 'd3-tip')
+    .offset([-10, 0])
+    .html(function(d) {
+      return "<strong>Paidup Capital :</strong> <span style='color:red'> Rs." + (d.paidup_capital/10000000).toFixed(2) + "crore </span><br><strong> Activity : </strong><span style='color:red'>"+d.activity+"</span";
+    })
+
+  var svg = d3.select("#state_spec")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  svg.call(tip);
+
+  d3.tsv(fileName, type, function(error, data) {
+    x.domain(data.map(function(d) { return d.activity; }));
+    y.domain([0, d3.max(data, function(d) { return d.paidup_capital; })]);
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+      .append("text")
+        .attr("x",width/2)
+        .attr("dy", "1.41em")
+        .text("Sectors");
+
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+      .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .text("Paidup Capital");
+
+    svg.selectAll(".bar")
+        .data(data)
+      .enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", function(d) { return x(d.activity); })
+        .attr("width", x.rangeBand())
+        .attr("y", function(d) { return y(d.paidup_capital); })
+        .attr("height", function(d) { return height - y(d.paidup_capital); })
+        .on('mouseover', tip.show)
+        .on('mouseout', tip.hide)
+
+  });
+
+  function type(d) {
+    d.paidup_capital = +d.paidup_capital;
+    d.capital = +d.capital;
+    d.number_of_companies = +d.number_of_companies;
+    return d;
+  }
+}
+
+
+
+</script>

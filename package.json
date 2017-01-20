@@ -1,0 +1,20 @@
+{
+  "name": "cs3100-data_visualization",
+  "version": "1.0.0",
+  "description": "using d3.js to visualize data",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.14.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [
+    "d3.js",
+    "visualization"
+  ],
+  "author": "Arjun Krishna (CS14B058)",
+  "license": "ISC"
+}
